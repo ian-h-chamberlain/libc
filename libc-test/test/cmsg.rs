@@ -3,7 +3,7 @@
 
 extern crate libc;
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "horizon")))]
 mod t {
 
     use libc::{self, c_uchar, c_uint, c_void, cmsghdr, msghdr};

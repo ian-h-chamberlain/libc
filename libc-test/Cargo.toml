@@ -20,6 +20,10 @@ cc = "1.0.61"
 # FIXME: Use fork ctest until the maintainer gets back.
 ctest2 = "0.4.3"
 
+[target.armv6k-nintendo-3ds.dev-dependencies]
+linker-fix-3ds = { git = "https://github.com/Meziu/rust-linker-fix-3ds.git" }
+pthread-3ds = { git = "https://github.com/Meziu/pthread-3ds.git" }
+
 [features]
 default = [ "std" ]
 std = [ "libc/std" ]

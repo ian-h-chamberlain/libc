@@ -11,7 +11,7 @@ use std::{env, io};
 fn do_cc() {
     let target = env::var("TARGET").unwrap();
     if cfg!(unix) {
-        let exclude = ["redox", "wasi"];
+        let exclude = ["redox", "wasi", "nintendo"];
         if !exclude.iter().any(|x| target.contains(x)) {
             let mut cmsg = cc::Build::new();
 
@@ -43,6 +43,7 @@ fn do_ctest() {
         t if t.contains("emscripten") => return test_emscripten(t),
         t if t.contains("freebsd") => return test_freebsd(t),
         t if t.contains("haiku") => return test_haiku(t),
+        t if t.contains("nintendo") => return test_horizon(t),
         t if t.contains("linux") => return test_linux(t),
         t if t.contains("netbsd") => return test_netbsd(t),
         t if t.contains("openbsd") => return test_openbsd(t),
@@ -88,6 +89,11 @@ fn do_semver() {
     let mut semver_root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     semver_root.push("semver");
 
+    if os == "horizon" {
+        // no semver guarantees for horizon and it's broken for the "base" APIs
+        return;
+    }
+
     // NOTE: Windows has the same `family` as `os`, no point in including it
     // twice.
     // NOTE: Android doesn't include the unix file (or the Linux file) because
@@ -96,6 +102,7 @@ fn do_semver() {
     if family != os && os != "android" {
         process_semver_file(&mut output, &mut semver_root, &family);
     }
+
     process_semver_file(&mut output, &mut semver_root, &vendor);
     process_semver_file(&mut output, &mut semver_root, &os);
     let os_arch = format!("{}-{}", os, arch);
@@ -3847,4 +3854,179 @@ fn test_haiku(target: &str) {
         }
     });
     cfg.generate("../src/lib.rs", "main.rs");
+}
+
+fn test_horizon(target: &str) {
+    assert!(target.contains("nintendo"));
+
+    let mut cfg = ctest_cfg();
+
+    // TODO: requires `CC_armv6k_nintendo_3ds` defined as well
+    assert!(
+        option_env!("DEVKITARM").is_some() && option_env!("DEVKITPRO").is_some(),
+        "Please set DEVKITARM and DEVKITPRO in your environment",
+    );
+
+    if target.contains("3ds") {
+        let libctru = concat!(env!("DEVKITPRO"), "/libctru");
+
+        cfg.include(&format!("{}/include", libctru));
+
+        cfg.flag("-lctru");
+        cfg.flag(&format!("-L{}", libctru));
+
+        cfg.flag("-mtune=mpcore");
+        cfg.flag("-mfloat-abi=hard");
+        cfg.flag("-mfpu=vfpv2");
+        cfg.flag("-mtp=soft");
+
+        cfg.define("__3DS__", None);
+        // cfg.define("REENTRANT_SYSCALLS_PROVIDED", None);
+        // cfg.define("__DEFAULT_UTF8__", None);
+
+        cfg.flag("-fdiagnostics-color=always");
+    }
+
+    // Newlib API
+    headers! { cfg:
+        // "_ansi.h",
+        // "_newlib_version.h",
+        // "machine/_default_types.h",
+        // "machine/_endian.h",
+        // "machine/_time.h",
+        // "machine/_types.h",
+        "machine/endian.h",
+        "machine/ieeefp.h",
+        "machine/time.h",
+        "machine/types.h",
+        "newlib.h",
+        "signal.h",
+        "stdint.h",
+        // "sys/_intsup.h",
+        // "sys/_locale.h",
+        // "sys/_pthreadtypes.h",
+        // "sys/_sigset.h",
+        // "sys/_stdint.h",
+        // "sys/_timespec.h",
+        // "sys/_timeval.h",
+        // "sys/_types.h",
+        "sys/cdefs.h",
+        "sys/config.h",
+        "sys/features.h",
+        "sys/lock.h",
+        "sys/reent.h",
+        "sys/sched.h",
+        "sys/select.h",
+        "sys/signal.h",
+        "sys/time.h",
+        "sys/times.h",
+        "sys/timespec.h",
+        "sys/types.h",
+        "time.h",
+    }
+
+    // libctru APIs
+    headers! { cfg:
+        "sys/ioctl.h",
+        "sys/select.h",
+        "sys/socket.h",
+    }
+
+    cfg.skip_struct(move |ty| match ty {
+        "addrinfo" => true,
+        "cpu_set_t" => true,
+        "dirent" => true,
+        "Dl_info" => true,
+        "group" => true,
+        "hostent" => true,
+        "in_addr" => true,
+        "in6_addr" => true,
+        "iovec" => true,
+        "ip_mreq" => true,
+        "ipv6_mreq" => true,
+        "lconv" => true,
+        "linger" => true,
+        "passwd" => true,
+        "pollfd" => true,
+        "protoent" => true,
+        "pthread_attr_t" => true,
+        "pthread_cond_t" => true,
+        "pthread_condattr_t" => true,
+        "pthread_mutex_t" => true,
+        "pthread_mutexattr_t" => true,
+        "pthread_rwlock_t" => true,
+        "pthread_rwlockattr_t" => true,
+        "rlimit" => true,
+        "rusage" => true,
+        "sem_t" => true,
+        "servent" => true,
+        "sigset_t" => true,
+        "sigval" => true,
+        "stack_t" => true,
+        "stat" => true,
+        "statvfs" => true,
+        "termios" => true,
+        "utimbuf" => true,
+        "utsname" => true,
+        "winsize" => true,
+        // todo: should these be working with libctru?
+        "sockaddr_in" => true,
+        "sockaddr_in6" => true,
+        "sockaddr_un" => true,
+        _ => false,
+    });
+
+    cfg.skip_type(move |ty| match ty {
+        "cc_t" => true,
+        "loff_t" => true,
+        "nfds_t" => true,
+        "rlim_t" => true,
+        "sighandler_t" => true,
+        "speed_t" => true,
+        "tcflag_t" => true,
+        _ => false,
+    });
+
+    // for now, skip all fns and consts. There are _a lot_, and it would probably
+    // be better off as an allowlist than a blocklist
+    cfg.skip_fn(move |_name| true);
+    cfg.skip_const(move |_name| true);
+
+    cfg.skip_field(move |struct_, field| match (struct_, field) {
+        ("sockaddr", "sa_data") => true,
+        _ => false,
+    });
+
+    cfg.skip_roundtrip(move |_s| false);
+
+    cfg.type_name(move |ty, is_struct, is_union| match ty {
+        "sigset_t" | "FILE" | "DIR" => ty.to_string(),
+
+        // t if t.ends_with("_t") => t.to_string(),
+        t if is_union => format!("union {}", t),
+        t if is_struct => format!("struct {}", t),
+        t => t.to_string(),
+    });
+
+    cfg.field_name(move |_struct_, field| field.to_string());
+
+    cfg.generate("../src/lib.rs", "main.rs");
+
+    let mut main = PathBuf::from(env::var("OUT_DIR").unwrap());
+    main.push("main.rs");
+    let mut contents = std::fs::read_to_string(&main).unwrap();
+
+    // Hack workaround for https://github.com/rust-lang/rust/issues/47384
+    // maybe also required for us to setup a Console and print output? lol
+    let fn_main = "fn main() {";
+    let pos = contents.find(fn_main).unwrap() + fn_main.len();
+
+    contents.insert_str(
+        pos,
+        "
+                linker_fix_3ds::init();
+                pthread_3ds::init();",
+    );
+
+    std::fs::write(&main, contents).unwrap();
 }
