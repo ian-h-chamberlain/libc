@@ -449,8 +449,16 @@ pub const AF_UNSPEC: ::c_int = 0;
 pub const AF_INET: ::c_int = 2;
 
 pub const CLOCK_REALTIME: ::clockid_t = 1;
-pub const CLOCK_MONOTONIC: ::clockid_t = 4;
-pub const CLOCK_BOOTTIME: ::clockid_t = 4;
+cfg_if! {
+    if #[cfg(target_os = "horizon")] {
+        // There is only one clock in HorizonOS, based on the system local time
+        pub const CLOCK_MONOTONIC: ::clockid_t = 1;
+        pub const CLOCK_BOOTTIME: ::clockid_t = 1;
+    } else {
+        pub const CLOCK_MONOTONIC: ::clockid_t = 4;
+        pub const CLOCK_BOOTTIME: ::clockid_t = 4;
+    }
+}
 
 pub const SOCK_STREAM: ::c_int = 1;
 pub const SOCK_DGRAM: ::c_int = 2;
