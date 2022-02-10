@@ -194,6 +194,12 @@ extern "C" {
         value: *mut ::c_void,
     ) -> ::c_int;
 
+    pub fn pthread_attr_setpriority(attr: *mut ::pthread_attr_t, priority: ::c_int) -> ::c_int;
+
+    pub fn pthread_attr_setaffinity(attr: *mut ::pthread_attr_t, affinity: ::c_int) -> ::c_int;
+
+    pub fn pthread_getpriority() -> ::c_int;
+
     pub fn getrandom(buf: *mut ::c_void, buflen: ::size_t, flags: ::c_uint) -> ::ssize_t;
 
     pub fn gethostid() -> ::c_long;
