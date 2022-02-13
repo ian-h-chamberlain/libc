@@ -3918,6 +3918,7 @@ fn test_horizon(target: &str) {
         "sys/sched.h",
         "sys/select.h",
         "sys/signal.h",
+        "sys/stat.h",
         "sys/time.h",
         "sys/times.h",
         "sys/timespec.h",
@@ -3927,6 +3928,7 @@ fn test_horizon(target: &str) {
 
     // libctru APIs
     headers! { cfg:
+        "netinet/in.h",
         "sys/ioctl.h",
         "sys/select.h",
         "sys/socket.h",
@@ -3934,7 +3936,6 @@ fn test_horizon(target: &str) {
 
     cfg.skip_struct(move |ty| match ty {
         "addrinfo" => true,
-        "cpu_set_t" => true,
         "dirent" => true,
         "Dl_info" => true,
         "group" => true,
@@ -3949,6 +3950,28 @@ fn test_horizon(target: &str) {
         "passwd" => true,
         "pollfd" => true,
         "protoent" => true,
+        "rlimit" => true,
+        "rusage" => true,
+        "sem_t" => true,
+        "servent" => true,
+        "stack_t" => true,
+        "statvfs" => true,
+        "termios" => true,
+        "utimbuf" => true,
+        "utsname" => true,
+        "winsize" => true,
+
+        // sockaddr has a flexible array member so fails sizeof checks.
+        "sockaddr" => true,
+        // These seem to be unimplemented in newlib?
+        "sockaddr_in6" => true,
+        "sockaddr_un" => true,
+
+        // Cannot zero-initialize function pointer type
+        "sigaction" => true,
+
+        // TODO: pending pthread changes
+        "cpu_set_t" => true,
         "pthread_attr_t" => true,
         "pthread_cond_t" => true,
         "pthread_condattr_t" => true,
@@ -3956,24 +3979,7 @@ fn test_horizon(target: &str) {
         "pthread_mutexattr_t" => true,
         "pthread_rwlock_t" => true,
         "pthread_rwlockattr_t" => true,
-        "rlimit" => true,
-        "rusage" => true,
-        "sem_t" => true,
-        "servent" => true,
-        "sigset_t" => true,
-        "sigval" => true,
-        "stack_t" => true,
-        "stat" => true,
-        "statvfs" => true,
-        "termios" => true,
-        "utimbuf" => true,
-        "utsname" => true,
-        "winsize" => true,
-        // todo: should these be working with libctru?
-        "sockaddr_in" => true,
-        "sockaddr_in6" => true,
-        "sockaddr_un" => true,
-        "sigaction" => true,
+
         _ => false,
     });
 
@@ -3993,17 +3999,15 @@ fn test_horizon(target: &str) {
     cfg.skip_fn(move |_name| true);
     cfg.skip_const(move |_name| true);
 
-    cfg.skip_field(move |struct_, field| match (struct_, field) {
-        ("sockaddr", "sa_data") => true,
-        _ => false,
-    });
-
-    cfg.skip_roundtrip(move |_s| false);
+    // When there _is_ an ABI mismatch, you can uncomment this out to avoid invalid writes
+    // cfg.skip_roundtrip(move |_s| true);
 
     cfg.type_name(move |ty, is_struct, is_union| match ty {
         "sigset_t" | "FILE" | "DIR" => ty.to_string(),
 
-        // t if t.ends_with("_t") => t.to_string(),
+        // Not sure why this isn't covereed by is_union?
+        "sigval" => format!("union sigval"),
+
         t if is_union => format!("union {}", t),
         t if is_struct => format!("struct {}", t),
         t => t.to_string(),
