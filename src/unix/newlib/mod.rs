@@ -163,10 +163,6 @@ s! {
         pub f_namemax: ::c_ulong,
     }
 
-    pub struct sigset_t {
-        __val: [::c_ulong; 16],
-    }
-
     pub struct sigaction {
         pub sa_handler: extern fn(arg1: ::c_int),
         pub sa_mask: sigset_t,
@@ -239,6 +235,18 @@ s! {
     pub struct pthread_rwlockattr_t { // Unverified
         __lockkind: ::c_int,
         __pshared: ::c_int,
+    }
+}
+
+cfg_if! {
+    if #[cfg(target_os = "horizon")] {
+        pub type sigset_t = ::c_ulong;
+    } else {
+        s! {
+            pub struct sigset_t {
+                __val: [::c_ulong; 16],
+            }
+        }
     }
 }
 
