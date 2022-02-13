@@ -21,14 +21,16 @@ cc = "1.0.61"
 ctest2 = "0.4.3"
 
 [target.armv6k-nintendo-3ds.dev-dependencies]
+ctru = { package = "ctru-rs", git = "https://github.com/Meziu/ctru-rs.git" }
 linker-fix-3ds = { git = "https://github.com/Meziu/rust-linker-fix-3ds.git" }
 pthread-3ds = { git = "https://github.com/Meziu/pthread-3ds.git" }
+scopeguard = "1.1.0"
 
 [features]
-default = [ "std" ]
-std = [ "libc/std" ]
-align = [ "libc/align" ]
-extra_traits = [ "libc/extra_traits" ]
+default = ["std"]
+std = ["libc/std"]
+align = ["libc/align"]
+extra_traits = ["libc/extra_traits"]
 
 [[test]]
 name = "main"

@@ -3973,6 +3973,7 @@ fn test_horizon(target: &str) {
         "sockaddr_in" => true,
         "sockaddr_in6" => true,
         "sockaddr_un" => true,
+        "sigaction" => true,
         _ => false,
     });
 
@@ -4023,9 +4024,36 @@ fn test_horizon(target: &str) {
 
     contents.insert_str(
         pos,
-        "
-                linker_fix_3ds::init();
-                pthread_3ds::init();",
+        r#"
+                use ctru::console::Console;
+                use ctru::gfx::Gfx;
+                use ctru::services::apt::Apt;
+                use ctru::services::hid::{Hid, KeyPad};
+
+                ctru::init();
+                let gfx = Gfx::default();
+                gfx.top_screen.borrow_mut().set_wide_mode(true);
+                let hid = Hid::init().expect("Couldn't obtain HID controller");
+                let apt = Apt::init().expect("Couldn't obtain APT controller");
+                let _console = Console::init(gfx.top_screen.borrow_mut());
+
+                // easier than trying to find the spot in main to put this code
+                scopeguard::defer! {
+                    println!("Press START to exit");
+
+                    while apt.main_loop() {
+
+                        hid.scan_input();
+                        if hid.keys_down().contains(KeyPad::KEY_START) {
+                            break;
+                        }
+
+                        gfx.flush_buffers();
+                        gfx.swap_buffers();
+                        gfx.wait_for_vblank();
+                    }
+                }
+        "#,
     );
 
     std::fs::write(&main, contents).unwrap();
