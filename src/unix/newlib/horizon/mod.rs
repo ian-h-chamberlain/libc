@@ -233,6 +233,8 @@ extern "C" {
         policy: ::c_int,
         param: *const ::sched_param,
     ) -> ::c_int;
+    
+    pub fn pthread_getprocessorid_np() -> ::c_int;
 
     pub fn getrandom(buf: *mut ::c_void, buflen: ::size_t, flags: ::c_uint) -> ::ssize_t;
 
