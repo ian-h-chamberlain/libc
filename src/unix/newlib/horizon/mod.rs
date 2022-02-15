@@ -51,6 +51,10 @@ s! {
         pub sun_family: ::sa_family_t,
         pub sun_path: [::c_char; 104usize],
     }
+
+    pub struct sched_param {
+        pub sched_priority: ::c_int,
+    }
 }
 
 pub const SIGEV_NONE: ::c_int = 1;
@@ -151,6 +155,10 @@ pub const RTLD_DEFAULT: *mut ::c_void = 0 as *mut ::c_void;
 pub const GRND_NONBLOCK: ::c_uint = 0x1;
 pub const GRND_RANDOM: ::c_uint = 0x2;
 
+// For pthread get/setschedparam
+pub const SCHED_FIFO: ::c_int = 1;
+pub const SCHED_RR: ::c_int = 2;
+
 // Horizon OS works doesn't or can't hold any of this information
 safe_f! {
     pub {const} fn WIFSTOPPED(_status: ::c_int) -> bool {
@@ -194,11 +202,39 @@ extern "C" {
         value: *mut ::c_void,
     ) -> ::c_int;
 
-    pub fn pthread_attr_setpriority(attr: *mut ::pthread_attr_t, priority: ::c_int) -> ::c_int;
+    pub fn pthread_attr_getschedparam(
+        attr: *const ::pthread_attr_t,
+        param: *mut sched_param,
+    ) -> ::c_int;
 
-    pub fn pthread_attr_setaffinity(attr: *mut ::pthread_attr_t, affinity: ::c_int) -> ::c_int;
+    pub fn pthread_attr_setschedparam(
+        attr: *mut ::pthread_attr_t,
+        param: *const sched_param,
+    ) -> ::c_int;
 
-    pub fn pthread_getpriority() -> ::c_int;
+    pub fn pthread_attr_getidealprocessor_np(
+        attr: *const ::pthread_attr_t,
+        ideal_processor: *mut ::c_int,
+    ) -> ::c_int;
+
+    pub fn pthread_attr_setidealprocessor_np(
+        attr: *mut ::pthread_attr_t,
+        ideal_processor: ::c_int,
+    ) -> ::c_int;
+
+    pub fn pthread_getschedparam(
+        native: ::pthread_t,
+        policy: *mut ::c_int,
+        param: *mut ::sched_param,
+    ) -> ::c_int;
+
+    pub fn pthread_setschedparam(
+        native: ::pthread_t,
+        policy: ::c_int,
+        param: *const ::sched_param,
+    ) -> ::c_int;
+    
+    pub fn pthread_getprocessorid_np() -> ::c_int;
 
     pub fn getrandom(buf: *mut ::c_void, buflen: ::size_t, flags: ::c_uint) -> ::ssize_t;
 
